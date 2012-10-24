@@ -8,88 +8,17 @@
 
 #import "ViewController.h"
 #import "itgirlconstants.h"
-@implementation UIImage (Extras)
-
-#pragma mark -
-#pragma mark Scale and crop image
-
-- (UIImage*)imageByScalingAndCroppingForSize:(CGSize)targetSize
-{
-    UIImage *sourceImage = self;
-    UIImage *newImage = nil;
-    CGSize imageSize = sourceImage.size;
-    CGFloat width = imageSize.width;
-    CGFloat height = imageSize.height;
-    CGFloat targetWidth = targetSize.width;
-    CGFloat targetHeight = targetSize.height;
-    CGFloat scaleFactor = 0.0;
-    CGFloat scaledWidth = targetWidth;
-    CGFloat scaledHeight = targetHeight;
-    CGPoint thumbnailPoint = CGPointMake(0.0,0.0);
-    
-    if (CGSizeEqualToSize(imageSize, targetSize) == NO)
-    {
-        CGFloat widthFactor = targetWidth / width;
-        CGFloat heightFactor = targetHeight / height;
-        
-        if (widthFactor > heightFactor)
-        {
-            scaleFactor = widthFactor; // scale to fit height
-        }
-        else
-        {
-            scaleFactor = heightFactor; // scale to fit width
-        }
-        
-        scaledWidth  = width * scaleFactor;
-        scaledHeight = height * scaleFactor;
-        
-        // center the image
-        if (widthFactor > heightFactor)
-        {
-            thumbnailPoint.y = (targetHeight - scaledHeight) * 0.5;
-        }
-        else
-        {
-            if (widthFactor < heightFactor)
-            {
-                thumbnailPoint.x = (targetWidth - scaledWidth) * 0.5;
-            }
-        }
-    }
-    
-    UIGraphicsBeginImageContext(targetSize); // this will crop
-    
-    CGRect thumbnailRect = CGRectZero;
-    thumbnailRect.origin = thumbnailPoint;
-    thumbnailRect.size.width  = scaledWidth;
-    thumbnailRect.size.height = scaledHeight;
-    
-    [sourceImage drawInRect:thumbnailRect];
-    
-    newImage = UIGraphicsGetImageFromCurrentImageContext();
-    
-    if(newImage == nil)
-    {
-        NSLog(@"could not scale image");
-    }
-    
-    //pop the context to get back to the default
-    UIGraphicsEndImageContext();
-    
-    return newImage;
-}
-@end
 @interface ViewController ()
 
 @end
 
 @implementation ViewController
--(void)dismissAlerter{
-    [alerter dismissWithClickedButtonIndex:0 animated:YES];
 
-}
+
+#pragma mark -
+#pragma mark mainImageView Delegate methods
 -(void)viewLoaded:(NSObject *)thisView{
+    
     mainImageView *curview = (mainImageView*)thisView;
     if (thisView == currentView || thisView==prevView || thisView==nextView){
         
@@ -101,6 +30,30 @@
         curview.btnImageView.alpha=0.0f;
     }
 }
+-(void)expandImage:(NSString *)imageTag{
+    
+    if([imageTag intValue] != kControlViewBtn){
+        mainImageView *thisview = [[imagePreviews objectForKey:imageTag] retain];
+        [thisview.view removeFromSuperview];
+        [bgScrollView addSubview:thisview.view];
+        [imagePreviews removeObjectForKey:imageTag];
+        thisview.view.frame = currentView.view.frame;
+        if(currentView){
+            [currentView release];
+            currentView=nil;
+        }
+        currentView=thisview;
+        currentView.btnImageView.tag=kControlViewBtn;
+        currentView.btnImageView.enabled=NO;
+        [self hideControls];
+    }
+    NSMutableDictionary *todaysgirl = [delegate.ds.userSelections objectForKey:currentGirlKey];
+    [todaysgirl setValue:currentView.picKey forKey:@"mainimage"];
+    
+    
+}
+#pragma mark -
+#pragma mark display current girl and fill up scrollview
 -(void)renderMetaInfo:(NSDictionary*)todaysgirl{
     [mainTitle setText:[todaysgirl objectForKey:@"location"]];
     mainTitle.text = [mainTitle.text uppercaseString];
@@ -181,29 +134,15 @@
     return thegirl;
 }
 -(void)loadCurrentIndex{
-        NSMutableDictionary *todaysgirl = [self getGirl:currentGirlIndex];
+    
+    NSMutableDictionary *todaysgirl = [self getGirl:currentGirlIndex];
     if(currentGirlKey){
         [currentGirlKey release];
         currentGirlKey=nil;
     }
     currentGirlKey = [[todaysgirl objectForKey:@"id"] retain];
-
-    [self renderMetaInfo:todaysgirl];
+    //currentGirlKey will keep track of who is the current girl in our user selection dictionary. There's also the index that we can iterate through but for now lets keep both
     
-    [bgScrollView setContentSize:CGSizeMake(960, 480)];
-
-    [bgScrollView setContentOffset:CGPointMake(320, 0)];
-    if(currentView){
-        [currentView.view removeFromSuperview];
-        
-        [currentView release];
-        currentView=nil;
-    }
-    currentView = [[mainImageView alloc] initWithNibName:@"mainImageView" bundle:nil];
-
-    [self loadImageView:currentView withGirl:todaysgirl withFrame:CGRectMake(320, 0, 320, 480)];
-    
-//    [self.view addSubview:currentView.view];
     NSArray *girlpics = [todaysgirl objectForKey:@"girlpics"];
     if([girlpics count] <2){
         morePicsView.hidden=YES;
@@ -211,13 +150,28 @@
     else{
         morePicsView.hidden=NO;
     }
+    //only display more pics if there are more pics
+    //the meta info like age name etc is only for the current girl. Need to figure out how to deal with formatting for longer names
+    [self renderMetaInfo:todaysgirl];
+    //doesn't need to be done everytime but whatevs
+    [bgScrollView setContentSize:CGSizeMake(960, 480)];
+    [bgScrollView setContentOffset:CGPointMake(320, 0)];
     
+    //Load current view
+    if(currentView){
+        [currentView.view removeFromSuperview];
+        
+        [currentView release];
+        currentView=nil;
+    }
+    currentView = [[mainImageView alloc] initWithNibName:@"mainImageView" bundle:nil];
+    [self loadImageView:currentView withGirl:todaysgirl withFrame:CGRectMake(320, 0, 320, 480)];
+    
+    //Load previous girl
     int prevgirlindex = currentGirlIndex-1;
     if (currentGirlIndex ==0){
         prevgirlindex = [[delegate.ds girls] count]-1;
-        
     }
-    
     NSMutableDictionary *yestgirl = [self getGirl:prevgirlindex ];
     if(prevView){
         [prevView.view removeFromSuperview];
@@ -226,16 +180,13 @@
         prevView=nil;
     }
     prevView = [[mainImageView alloc] initWithNibName:@"mainImageView" bundle:nil];
-
     [self loadImageView:prevView withGirl:yestgirl withFrame:CGRectMake(0, 0, 320, 480)];
 
-    
+    //load next girl
     int nextgirlindex = currentGirlIndex+1;
     if (nextgirlindex >=[[[delegate ds] girls] count]){
         nextgirlindex =0;
-        
     }
-    
     NSMutableDictionary *nextgirl = [self getGirl:nextgirlindex ];
     if(nextView){
         [nextView.view removeFromSuperview];
@@ -244,44 +195,72 @@
         nextView=nil;
     }
     nextView = [[mainImageView alloc] initWithNibName:@"mainImageView" bundle:nil];
-    
     [self loadImageView:nextView withGirl:nextgirl withFrame:CGRectMake(640, 0, 320, 480)];
-
-    
     //Make sure control view is always int he front
     [self.view bringSubviewToFront:controlView];
-/*
-    [UIView animateWithDuration:0.5f animations:^{
-            currentView.btnImageView.alpha=1.0f;
-            prevView.btnImageView.alpha=1.0f;
-        }];
- */
-    
-
 }
+
+#pragma mark -
+#pragma mark inital load methods
 -(void)finishedloading{
     currentGirlIndex = [[[delegate ds] girls] count]-1;
     [self loadCurrentIndex];
-    [self.view bringSubviewToFront:controlView];
+}
+-(void)dismissAlerter{
+    [alerter dismissWithClickedButtonIndex:0 animated:YES];
 }
 -(void)loadStuff{
-    //This method loads up the data from the server and then loads the latest girl as per our query
+    //This method loads up the data from the server and then loads the latest girl as per our query. I believe this should call delegate load and finish first before going down to dismiss the alertview. Assuming it loads successfully it will call finishedloading to display our data. Should implement something for when it doesnt work.
     delegate = [[UIApplication sharedApplication] delegate];
     if ([delegate load]){
         [self performSelectorOnMainThread:@selector(finishedloading) withObject:nil waitUntilDone:NO];
     }
-    [delegate.ds performSelectorInBackground:@selector(storeFutureInfo) withObject:nil];
     [self performSelectorOnMainThread:@selector(dismissAlerter) withObject:nil waitUntilDone:NO];
 }
+
+//unused but i think it will come up again...
 -(void)showTodaysGirl{
     currentGirlIndex = [[[delegate ds] girls] count]-1;
     [self loadCurrentIndex];
     controlView.hidden=TRUE;
+}
+
+#pragma mark -
+#pragma mark control screen handling
+-(void)bringThisViewToFront:(NSNotification*)note{
+    UIView *viewer = (UIView*)[note object];
+    if ([viewer class] == [UIView class])
+        [self.view bringSubviewToFront:viewer];
+}
+-(void)hideControls{
+    //Wanted to avoid this method but seems like I need to hide everything without animating it for the expanding image
+    controlView.alpha=0.0f;
+    controlView.hidden=TRUE;
+    [self.view bringSubviewToFront:controlView];
+    
+    nameView.hidden=NO;
+    moreShown=FALSE;
+    int height = ([[[delegate.ds.girls objectAtIndex:currentGirlIndex] objectForKey:@"girlpics"] count] -1)* 75;
+    nameView.alpha=1.0f;
+    CGRect frame = morePicsBg.frame;
+    frame.size.height= frame.size.height-height;
+    morePicsBg.frame=frame;
+    for (NSString *keyval  in imagePreviews){
+        mainImageView *iView = [imagePreviews objectForKey:keyval];
+        
+        [iView.view removeFromSuperview];
+    }
+    [imagePreviews removeAllObjects];
+    [imagePreviews release];
+    imagePreviews = nil;
+
 
 }
 - (IBAction)displayControls:(id)sender {
+    //If we are dismissing and more pics are shown click that to dismiss it first
     if(moreShown)
         [self showMorePics];
+    
     if (controlView.hidden){
         controlView.hidden=FALSE;
         [UIView animateWithDuration:0.6f animations:^{
@@ -299,7 +278,7 @@
     }
     
 }
-
+//Just scorll over to the next or previous girl. The scroll view delegate handles updating it so it recenters and you can keep scrolling infinitely
 -(void)showNextGirl{
     [bgScrollView setContentOffset:CGPointMake(640, 0) animated:YES];
 
@@ -308,42 +287,11 @@
     [bgScrollView setContentOffset:CGPointMake(0, 0) animated:YES];
 
 }
-- (UIImage*)imageWithImage:(UIImage*)image
-              scaledToSize:(CGSize)newSize;
-{
-    UIGraphicsBeginImageContext( newSize );
-    [image drawInRect:CGRectMake(0,0,newSize.width,newSize.height)];
-    UIImage* newImage = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    
-    return newImage;
-}
--(void)expandImage:(NSString *)imageTag{
-    
-    if([imageTag intValue] == kControlViewBtn){
-        [self displayControls:nil];
-    }
-    else{
-    mainImageView *thisview = [[imagePreviews objectForKey:imageTag] retain];
-        [self.view bringSubviewToFront:thisview.view];
-    [imagePreviews removeObjectForKey:imageTag];
-        if(currentView){
-            [currentView release];
-            currentView=nil;
-        }
-        currentView=thisview;
-        currentView.btnImageView.tag=kControlViewBtn;
-        [self displayControls:nil];
-    }
-    NSMutableDictionary *todaysgirl = [delegate.ds.userSelections objectForKey:currentGirlKey];
-    [todaysgirl setValue:currentView.picKey forKey:@"mainimage"];
-    
-    
-}
+
 -(void)showMorePics{
     if(moreShown){
         nameView.hidden=NO;
-
+        //name view is the view with all the extra info in it. we hide it when showing the girl pics
         [UIView animateWithDuration:0.8f animations:^{
             int height = ([[[delegate.ds.girls objectAtIndex:currentGirlIndex] objectForKey:@"girlpics"] count] -1)* 75;
 
@@ -381,21 +329,20 @@
             if (![[todaysgirl objectForKey:@"mainimage"] isEqualToString:pic]){
                 mainImageView *previewView = [[[mainImageView alloc] initWithNibName:@"mainImageView" bundle:nil] autorelease];
                 
-                //UIView *containerView = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, 120, 44)] autorelease];
                 previewView.delegate=self;
                 UIImage *newImage = [delegate.ds loadImage:pic];
                 [previewView setImageForButton:newImage];
                 CGRect frame = previewView.view.frame;
+                
+                //whoo magic math. this layout is still chanign so leaving in the magic for now
                 frame.origin.x = morePicsView.frame.origin.x+ morePicsBtn.frame.origin.x+15.0f +23.0f;
                 frame.origin.y = morePicsView.frame.origin.y+morePicsBtn.frame.origin.y+44*count+60.0f+count*20.0f;
                 previewView.view.alpha=0.0f;
                 previewView.view.frame=frame;
                 previewView.picKey=pic;
-                NSLog(@"frame is %@ and btn frame is %@", NSStringFromCGRect(previewView.view.frame), NSStringFromCGRect(previewView.btnImageView.frame));
                 count++;
                 previewView.btnImageView.tag = count+kImagesOffset;
                 [imagePreviews setValue:previewView forKey:[NSString stringWithFormat:@"%i", count+kImagesOffset]];
-//                [imagePreviews addObject:previewView];
                 [self.view addSubview:previewView.view];
                 
             }
@@ -436,6 +383,7 @@
     }
     return YES; // handle the touch
 }
+
 - (void)viewDidLoad
 {
     [super viewDidLoad];
@@ -444,6 +392,7 @@
     controlView.alpha=0.0f;
     currentGirlIndex=-1;
     delegate = [[UIApplication sharedApplication] delegate];
+    //Alert view with loading indic. I really shoudl subclass this or something
     alerter = [[[UIAlertView alloc] initWithTitle:@"Loading" message:@"Loading Provider Information" delegate:self cancelButtonTitle:nil otherButtonTitles: nil]  autorelease];
     UIActivityIndicatorView *loading = [[[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge] autorelease];
     [loading setFrame:CGRectMake(125,90,30,30)];
@@ -459,13 +408,13 @@
     tapGesture.numberOfTapsRequired=1;
     [self.view addGestureRecognizer:tapGesture];
     [self performSelectorInBackground:@selector(loadStuff) withObject:nil];
-
-    
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(bringThisViewToFront:) name:@"BringToFront" object:nil];
 	// Do any additional setup after loading the view, typically from a nib.
 }
 #pragma mark Scroll View Delegate
 
 -(void)scrollViewDidScroll:(UIScrollView *)scrollView{
+    //Infininte scrolling
     int offset = scrollView.contentOffset.x;
     int page=0;
     switch (offset) {
@@ -483,14 +432,10 @@
     if(page !=0){
         currentGirlIndex = currentGirlIndex+page;
         //wrap around
-        NSLog(@"prev index is %i and count %i", currentGirlIndex, [[[delegate ds] girls] count]);
         if (currentGirlIndex < 0)
             currentGirlIndex=[[[delegate ds] girls] count]-1;
         else if(currentGirlIndex >= [[[delegate ds] girls] count])
             currentGirlIndex=0;
-        NSLog(@"post index is %i and count %i", currentGirlIndex, [[[delegate ds] girls] count]);
-
-        
         [self loadCurrentIndex];
     }
 }

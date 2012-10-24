@@ -11,7 +11,6 @@
 #import "SHK.h"
 #import "bonvenoLabel.h"
 #import "mainImageView.h"
-#import "InfiniteScrollView.h"
 @interface ViewController : UIViewController<UIGestureRecognizerDelegate, imageDelegate, UIScrollViewDelegate>
 {
     IBOutlet UIView *nameView;

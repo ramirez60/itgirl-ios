@@ -18,7 +18,6 @@
 @property (nonatomic, retain) NSMutableArray *girls;
 @property (nonatomic, retain) NSMutableDictionary *userSelections;
 -(void)storeSettings;
--(void)storeFutureInfo;
 + (DataSingleton *)sharedSingleton;
 -(UIImage *)loadImage:(NSString*)fromPath;
 @end

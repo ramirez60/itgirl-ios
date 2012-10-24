@@ -33,37 +33,32 @@ static DataSingleton *shared = NULL;
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
 	NSString *documentsDirectory = [paths objectAtIndex:0];
 	NSString *writableDBPath = [documentsDirectory stringByAppendingPathComponent:fromPath];
-    
-    
-	
-    //  NSString *writableDBPath = [[NSBundle mainBundle] pathForResource:fromPath ofType:@"png"];
     NSData *imgfile;
     BOOL success = FALSE;
-
     if (![fileManager fileExistsAtPath:writableDBPath]){
-
-	NSLog(@"%@", urlStr);
-    NSError *error;
-
-
-    NSURL* url = [NSURL URLWithString: urlStr];
-    imgfile = [[NSData dataWithContentsOfURL:url] retain];
-    if(imgfile != nil){
-        if ([fileManager fileExistsAtPath:writableDBPath])
-            [fileManager removeItemAtPath:writableDBPath error:&error];
-        NSMutableArray *components = [[writableDBPath componentsSeparatedByString:@"/"] mutableCopy];
-        [components removeLastObject];
-        NSString *pathtomake = [components componentsJoinedByString:@"/"];
+        NSLog(@"%@", urlStr);
+        NSError *error;
+        NSURL* url = [NSURL URLWithString: urlStr];
+        imgfile = [[NSData dataWithContentsOfURL:url] retain];
+        if(imgfile != nil){
+            if ([fileManager fileExistsAtPath:writableDBPath])
+                [fileManager removeItemAtPath:writableDBPath error:&error];
+            NSMutableArray *components = [[writableDBPath componentsSeparatedByString:@"/"] mutableCopy];
+            [components removeLastObject];
+            NSString *pathtomake = [components componentsJoinedByString:@"/"];
+            
+            [fileManager createDirectoryAtPath:pathtomake withIntermediateDirectories:YES attributes:nil error:&error];
+            
+            success = [fileManager createFileAtPath:writableDBPath contents:imgfile attributes:nil];
+            if(success)
+                NSLog(@"Image %@ downloaded", fromPath);
+            else
+                NSLog(@"Failing");
+        }
+        else{
+            NSLog(@"No image %@ at url", fromPath);
+        }
         
-        [fileManager createDirectoryAtPath:pathtomake withIntermediateDirectories:YES attributes:nil error:&error];
-        
-        success = [fileManager createFileAtPath:writableDBPath contents:imgfile attributes:nil];
-        if(success)
-            NSLog(@"Image %@ downloaded", fromPath);
-        else
-            NSLog(@"Failing");
-  
-    }
     }
     else
         success=TRUE;
@@ -74,15 +69,11 @@ static DataSingleton *shared = NULL;
     UIImage *newimage;
     NSString* urlStr = [kServerURL stringByAppendingString:fromPath];
 	urlStr = [urlStr stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
-	NSLog(@"%@", urlStr);
+	NSLog(@"Loading image %@", urlStr);
     NSFileManager *fileManager = [NSFileManager defaultManager];
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
 	NSString *documentsDirectory = [paths objectAtIndex:0];
 	NSString *writableDBPath = [documentsDirectory stringByAppendingPathComponent:fromPath];
-    
-    
-	
-    //  NSString *writableDBPath = [[NSBundle mainBundle] pathForResource:fromPath ofType:@"png"];
     NSData *imgfile;
     if ([fileManager fileExistsAtPath:writableDBPath]){
         imgfile = [fileManager contentsAtPath:writableDBPath];
@@ -104,68 +95,48 @@ static DataSingleton *shared = NULL;
     newimage = [[UIImage alloc] initWithData:imgfile];
     return newimage;
 }
-
--(void)storeFutureInfo{
-    //Loads up the future girls after the girls up to today ahve been loaded. Separate method because this can be done in the background
-    NSDate *today = [NSDate date];
-    NSDateFormatter *format = [[NSDateFormatter alloc] init];
-    [format setDateFormat:@"yyyy-MM-dd"];
-    NSString *dateString = [format stringFromDate:today];
-    [format release];
-    
-    FMResultSet *appset = [db executeQuery:[NSString stringWithFormat:@"SELECT * from core_itgirl where itgirldate <= '%@' order by itgirldate", dateString]];
-    FMResultSet *imageset;
-    while (appset && [appset next]){
-        NSMutableDictionary *thisgirl = [[appset resultDict] mutableCopy];
-        NSLog(@"Loading girl %@", thisgirl);
-        int thisgirlid = [appset intForColumn:@"id"];
-        imageset = [db executeQuery:@"SELECT * from core_girlimage where girlid_id == ?", [NSNumber numberWithInt:thisgirlid]];
-        NSMutableArray  *images = [[NSMutableArray alloc] init];
-        while (imageset && [imageset next]){
-            NSString *pathForIcon = [imageset stringForColumn:@"image"];
-            [self saveImage:pathForIcon];
-            if ( [imageset boolForColumn:@"mainimage"]){
-                [thisgirl setValue:pathForIcon forKey:@"mainimage"];
-                
-            }
-                [images addObject:pathForIcon];
+-(NSMutableDictionary *)saveGirlInfo:(FMResultSet*)appset{
+    NSMutableDictionary *thisgirl = [[appset resultDict] mutableCopy];
+    NSLog(@"Loading girl %@", thisgirl);
+    int thisgirlid = [appset intForColumn:@"id"];
+    FMResultSet *imageset = [db executeQuery:@"SELECT * from core_girlimage where girlid_id == ?", [NSNumber numberWithInt:thisgirlid]];
+    NSMutableArray  *images = [[[NSMutableArray alloc] init] autorelease];
+    while (imageset && [imageset next]){
+        NSString *pathForIcon = [imageset stringForColumn:@"image"];
+        [self saveImage:pathForIcon];
+        if ( [imageset boolForColumn:@"mainimage"]){
+            [thisgirl setValue:pathForIcon forKey:@"mainimage"];
+            
         }
-        [thisgirl setValue:images forKey:@"girlpics"];
-        
-        [images release];
+        [images addObject:pathForIcon];
     }
+    [thisgirl setValue:images forKey:@"girlpics"];
+    return thisgirl;
+    
 
 }
+-(void)saveDataWithQuery:(NSString*)query toSave:(BOOL)save{
+    FMResultSet *appset = [db executeQuery:query];
+    while (appset && [appset next]){
+        NSMutableDictionary *thisgirl = [self saveGirlInfo:appset];
+        
+        if(save)
+            [girls addObject: thisgirl];
+    }
+    
+}
+-(void)saveFutureData:(NSString*)query{
+    [self saveDataWithQuery:query toSave:NO];
+}
+
 -(void)loadData{
     NSDate *today = [NSDate date];
     NSDateFormatter *format = [[NSDateFormatter alloc] init];
     [format setDateFormat:@"yyyy-MM-dd"];
     NSString *dateString = [format stringFromDate:today];
     [format release];
-
-    FMResultSet *appset = [db executeQuery:[NSString stringWithFormat:@"SELECT * from core_itgirl where itgirldate <= '%@' order by itgirldate", dateString]];
-    FMResultSet *imageset;
-    while (appset && [appset next]){
-        NSMutableDictionary *thisgirl = [[appset resultDict] mutableCopy];
-        int thisgirlid = [appset intForColumn:@"id"];
-        imageset = [db executeQuery:@"SELECT * from core_girlimage where girlid_id == ?", [NSNumber numberWithInt:thisgirlid]];
-        NSMutableArray  *images = [[NSMutableArray alloc] init];
-        while (imageset && [imageset next]){
-            NSString *pathForIcon = [imageset stringForColumn:@"image"];
-            [self saveImage:pathForIcon];
-            if ( [imageset boolForColumn:@"mainimage"]){
-                [thisgirl setValue:pathForIcon forKey:@"mainimage"];
-                
-            }
-           // else{
-                [images addObject:pathForIcon];
-          //  }
-        }
-        [thisgirl setValue:images forKey:@"girlpics"];
-        
-        [images release];
-        [girls addObject:thisgirl];
-    }
+    [self saveDataWithQuery:[NSString stringWithFormat:@"SELECT * from core_itgirl where itgirldate <= '%@' order by itgirldate", dateString] toSave:YES];
+    [self performSelectorInBackground:@selector(saveFutureData:) withObject:[NSString stringWithFormat:@"SELECT * from core_itgirl where itgirldate <= '%@' order by itgirldate", dateString]];
 }
 -(void) getDB{
     NSString* urlStr = [kServerURL stringByAppendingString:kDatabaseFileName];

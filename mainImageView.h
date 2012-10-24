@@ -7,6 +7,8 @@
 //
 
 #import <UIKit/UIKit.h>
+
+//Impelementing some delegate callbacks so that my main view knows whats going on with this imageview.
 @protocol imageDelegate<NSObject>;
 //delegate methods
 @optional

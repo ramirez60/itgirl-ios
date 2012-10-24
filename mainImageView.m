@@ -30,7 +30,7 @@
 {
     [super viewDidLoad];
     [mainImageViewer setImage:bgImage];
-//    [_btnImageView setImage:bgImage forState:UIControlStateNormal];
+//Tells our main VC that this view is loaded and the image is appropriately set (assuming one was set)
     if([delegate respondsToSelector:@selector(viewLoaded:)]){
         [delegate viewLoaded:self];
     }
@@ -60,27 +60,29 @@
 
 }
 -(void)setImageForButton:(UIImage*)newimage{
+    //sets the image if the imageview object exists
     if(mainImageViewer){
         [mainImageViewer setImage:bgImage];
     }
         bgImage=newimage;
 }
 - (IBAction)tappedImage:(id)sender {
+    // The button is clear and sits on top of the image. This is because I want it disabled and not interfering with my scrollview or tapgestures when its maximized only in preview mode. The delegate will take care of disabling this. kControlViewBtn just lets us know its the main view now.
     int tag = ((UIButton*)sender).tag;
- 
-    if ([delegate respondsToSelector:@selector(expandImage:)]){
-        [delegate expandImage:[NSString stringWithFormat:@"%i",tag] ];
-    }
+    //This note is a little hacky. but in case there are multiple preview images wehn it expands i want it to be on top. will adjust for the proper heirarchy in the delegate method when it rejoins the scrollview class
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"BringToFront" object:self.view];
     if(tag != kControlViewBtn){
         [UIView animateWithDuration:1.0f animations:^{
-        [self.view setFrame:CGRectMake(0, 0, 320, 480)];
-        [_btnImageView setFrame:CGRectMake(0, 0, 320, 480)];
+            [self.view setFrame:CGRectMake(0, 0, 320, 480)];
+            [_btnImageView setFrame:CGRectMake(0, 0, 320, 480)];
             [mainImageViewer setFrame:CGRectMake(0, 0, 320, 480)];
-    }completion:^(BOOL finished){
-      //  if ([delegate respondsToSelector:@selector(expandImage:)]){
-       //     [delegate expandImage:[NSString stringWithFormat:@"%i",tag] ];
-       // }
-    }];
-        }
+        }completion:^(BOOL finished){
+            if ([delegate respondsToSelector:@selector(expandImage:)]){
+                [delegate expandImage:[NSString stringWithFormat:@"%i",tag] ];
+            }
+
+                   }];
+    }
+
 }
 @end
