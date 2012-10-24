@@ -401,7 +401,7 @@
     [alerter show];
     [prevGirl addTarget:self action:@selector(showPreviousGirl) forControlEvents:UIControlEventTouchUpInside];
     [nextGirl addTarget:self action:@selector(showNextGirl) forControlEvents:UIControlEventTouchUpInside];
-    [shareGirl addTarget:self action:@selector(shareKitHndle) forControlEvents:UIControlEventTouchUpInside];
+ //   [shareGirl addTarget:self action:@selector(shareKitHndle) forControlEvents:UIControlEventTouchUpInside];
     [morePicsBtn addTarget:self action:@selector(showMorePics) forControlEvents:UIControlEventTouchUpInside];
     UITapGestureRecognizer *tapGesture = [[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(displayControls:)] autorelease];
     tapGesture.delegate=self;
