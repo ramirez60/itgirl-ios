@@ -11,20 +11,32 @@
 #import "ViewController.h"
 
 @implementation AppDelegate
-
+@synthesize ds;
 - (void)dealloc
 {
     [_window release];
     [_viewController release];
     [super dealloc];
 }
-
+-(BOOL)load{
+    ds = [DataSingleton sharedSingleton];
+    if ([[ds girls] count] ==0){
+        NSLog(@"No girls :(");
+        return FALSE;
+    }
+    return TRUE;
+}
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
+    [Parse setApplicationId:@"35epZlXSu64X9DnWmovof8CKVOB1IsMecef3rnFQ"
+                  clientKey:@"3EfpIX2aWZmGE3iHS97AvzxPc4rymwlY0XstSTAm"];
+    [[UIApplication sharedApplication] setStatusBarHidden:YES withAnimation:NO];
+
     self.window = [[[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]] autorelease];
     // Override point for customization after application launch.
     self.viewController = [[[ViewController alloc] initWithNibName:@"ViewController" bundle:nil] autorelease];
     self.window.rootViewController = self.viewController;
+    
     [self.window makeKeyAndVisible];
     return YES;
 }
@@ -37,6 +49,7 @@
 
 - (void)applicationDidEnterBackground:(UIApplication *)application
 {
+    [ds storeSettings];
     // Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later. 
     // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
 }
