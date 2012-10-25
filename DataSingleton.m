@@ -50,6 +50,7 @@ static DataSingleton *shared = NULL;
             [fileManager createDirectoryAtPath:pathtomake withIntermediateDirectories:YES attributes:nil error:&error];
             
             success = [fileManager createFileAtPath:writableDBPath contents:imgfile attributes:nil];
+            [imgfile release];
             if(success)
                 NSLog(@"Image %@ downloaded", fromPath);
             else
@@ -157,6 +158,7 @@ static DataSingleton *shared = NULL;
         NSLog(@"Loading new db file");
         
         BOOL success = [fileManager createFileAtPath:writableDBPath contents:dbFile attributes:nil];
+        [dbFile release];
         if(success)
             NSLog(@"DB Downloaded");
         else
