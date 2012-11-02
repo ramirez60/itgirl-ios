@@ -17,6 +17,7 @@
 @synthesize delegate;
 @synthesize picKey;
 @synthesize mainImageViewer;
+@synthesize favView;
 - (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
 {
     self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
@@ -34,7 +35,7 @@
     if([delegate respondsToSelector:@selector(viewLoaded:)]){
         [delegate viewLoaded:self];
     }
-
+    favView = false;
     // Do any additional setup after loading the view from its nib.
 }
 
@@ -61,18 +62,21 @@
 }
 -(void)setImageForButton:(UIImage*)newimage{
     //sets the image if the imageview object exists
+    bgImage=newimage;
+
     if(mainImageViewer){
         [mainImageViewer setImage:bgImage];
     }
-        bgImage=newimage;
 }
 - (IBAction)tappedImage:(id)sender {
     // The button is clear and sits on top of the image. This is because I want it disabled and not interfering with my scrollview or tapgestures when its maximized only in preview mode. The delegate will take care of disabling this. kControlViewBtn just lets us know its the main view now.
     int tag = ((UIButton*)sender).tag;
+
+    if (!favView){
     //This note is a little hacky. but in case there are multiple preview images wehn it expands i want it to be on top. will adjust for the proper heirarchy in the delegate method when it rejoins the scrollview class
     [[NSNotificationCenter defaultCenter] postNotificationName:@"BringToFront" object:self.view];
     if(tag != kControlViewBtn){
-        [UIView animateWithDuration:1.0f animations:^{
+        [UIView animateWithDuration:.6f animations:^{
             [self.view setFrame:CGRectMake(0, 0, 320, 480)];
             [_btnImageView setFrame:CGRectMake(0, 0, 320, 480)];
             [mainImageViewer setFrame:CGRectMake(0, 0, 320, 480)];
@@ -82,6 +86,10 @@
             }
 
                    }];
+    }
+    }
+    else{
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"loadFavGirlIntoPage" object:[NSString stringWithFormat:@"%i", tag]];
     }
 
 }

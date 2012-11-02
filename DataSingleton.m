@@ -8,11 +8,13 @@
 
 #import "DataSingleton.h"
 #import "itgirlconstants.h"
+#import "mainImageView.h"
 static DataSingleton *shared = NULL;
 
 @implementation DataSingleton
 @synthesize girls;
 @synthesize userSelections;
+@synthesize favorites;
 + (DataSingleton *)sharedSingleton
 {
     
@@ -66,6 +68,7 @@ static DataSingleton *shared = NULL;
     return success;
     
 }
+
 -(UIImage *)loadImage:(NSString*)fromPath{
     UIImage *newimage;
     NSString* urlStr = [kServerURL stringByAppendingString:fromPath];
@@ -209,6 +212,16 @@ static DataSingleton *shared = NULL;
             userSelections = [[NSMutableDictionary alloc] init];
         }
 
+        // load favorites
+        writableDBPath = [documentsDirectory stringByAppendingPathComponent:kPlistFavFileName];
+        if ([fileManager isReadableFileAtPath:writableDBPath]){
+            favorites = [NSKeyedUnarchiver unarchiveObjectWithFile:writableDBPath];
+            favorites = [favorites mutableCopy];
+        }
+        else{
+            favorites = [[NSMutableArray alloc] init];
+        }
+
  
     }
 	return self;
@@ -225,6 +238,31 @@ static DataSingleton *shared = NULL;
     else{
         NSLog(@"Error saving user settings");
     }
+
+    writableDBPath = [documentsDirectory stringByAppendingPathComponent:kPlistFavFileName];
+if( [NSKeyedArchiver archiveRootObject:favorites toFile:writableDBPath]){
+    NSLog(@"favorites saved");
     
 }
+else{
+    NSLog(@"Error saving favorites");
+}
+
+}
+#pragma mark loadImageIntoOurMainImageView
+-(void)setImageFromThread:(NSArray*)info{
+    UIImage *newImage = [info objectAtIndex:0];
+    mainImageView* theView = [info objectAtIndex:1];
+    [theView setImageForButton:newImage];
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"ImageLoadedIntoView" object:nil];
+}
+-(void)loadImageIntoMorePicImages:(NSArray*)info{// intoObject:(mainImageView*)theView{
+    NSString *theimage = [info objectAtIndex:0];
+    mainImageView* theView = [info objectAtIndex:1];
+    UIImage *newImage = [self loadImage:theimage];
+    //[theView setImageForButton:newImage];
+    [self performSelectorOnMainThread:@selector(setImageFromThread:) withObject:[NSArray arrayWithObjects:newImage,theView, nil] waitUntilDone:NO];
+    
+}
+
 @end

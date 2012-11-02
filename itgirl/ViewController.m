@@ -57,6 +57,8 @@
 -(void)renderMetaInfo:(NSDictionary*)todaysgirl{
     [mainTitle setText:[todaysgirl objectForKey:@"location"]];
     mainTitle.text = [mainTitle.text uppercaseString];
+    [noBtnCityName setText:mainTitle.text];
+
     [mainTitle sizeToFit];
     //    [mainTitle setText:[NSString stringWithFormat:@"%@ %@ from %@", [todaysgirl objectForKey:@"fname"],[todaysgirl objectForKey:@"lname"], [todaysgirl objectForKey:@"location"] ]];
     [nameLabel setText:[NSString stringWithFormat:@"%@ %@", [todaysgirl objectForKey:@"fname"],[todaysgirl objectForKey:@"lname"]] ];
@@ -90,26 +92,36 @@
     labelFactoid.frame= frame;
 
 }
--(void)loadImageForGirl:(NSDictionary*)todaysgirl intoView:(mainImageView *)thisView{
-    NSArray *girlpics = [todaysgirl objectForKey:@"girlpics"];
 
+-(void)loadImageForGirl:(NSDictionary*)todaysgirl intoView:(mainImageView *)thisView{
+    NSString *picKey;
     if ([todaysgirl objectForKey:@"mainimage"]){
-        [thisView setImageForButton:[delegate.ds loadImage:[todaysgirl objectForKey:@"mainimage"]]];
+        picKey = [todaysgirl objectForKey:@"mainimage"];
+//        [thisView setImageForButton:[delegate.ds loadImage:[todaysgirl objectForKey:@"mainimage"]]];
         thisView.picKey = [todaysgirl objectForKey:@"mainimage"];
     }
-    //            [mainPic setImage:[delegate.ds loadImage:[todaysgirl objectForKey:@"mainimage"]]];
     else{
+        NSArray *girlpics = [todaysgirl objectForKey:@"girlpics"];
+
         if ([girlpics count] >0){
-            [thisView setImageForButton:[delegate.ds loadImage:[girlpics objectAtIndex:0]]];
+            picKey = [girlpics objectAtIndex:0];
+//            [thisView setImageForButton:[delegate.ds loadImage:[girlpics objectAtIndex:0]]];
             [todaysgirl setValue:[girlpics objectAtIndex:0] forKey:@"mainimage"];
             thisView.picKey = [todaysgirl objectForKey:@"mainimage"];
-            
-            //                [mainPic setImage:[girlpics objectAtIndex:0]];
         }
         else{
             [NSException raise:@"Illegal girl" format:@"No image stored for todays it girl"];
         }
     }
+    NSOperationQueue *queue = [NSOperationQueue new];
+    
+    NSInvocationOperation *operation = [[NSInvocationOperation alloc]
+                                        initWithTarget:delegate.ds
+                                        selector:@selector(loadImageIntoMorePicImages:)
+                                        object:[NSArray arrayWithObjects:picKey,thisView, nil]];
+    [queue addOperation:operation];
+    [operation release];
+
     thisView.delegate=self;
     [thisView viewDidLoad];
 
@@ -134,13 +146,20 @@
     return thegirl;
 }
 -(void)loadCurrentIndex{
-    
     NSMutableDictionary *todaysgirl = [self getGirl:currentGirlIndex];
     if(currentGirlKey){
         [currentGirlKey release];
         currentGirlKey=nil;
     }
     currentGirlKey = [[todaysgirl objectForKey:@"id"] retain];
+    if([delegate.ds.favorites containsObject:todaysgirl]){
+        [addToFavs setImage:[UIImage imageNamed:@"heartred.png"] forState:UIControlStateNormal];
+        
+    }
+    else{
+        [addToFavs setImage:[UIImage imageNamed:@"heart.png"] forState:UIControlStateNormal];
+
+    }
     //currentGirlKey will keep track of who is the current girl in our user selection dictionary. There's also the index that we can iterate through but for now lets keep both
     
     NSArray *girlpics = [todaysgirl objectForKey:@"girlpics"];
@@ -155,16 +174,15 @@
     [self renderMetaInfo:todaysgirl];
     //doesn't need to be done everytime but whatevs
     [bgScrollView setContentSize:CGSizeMake(960, 480)];
-    [bgScrollView setContentOffset:CGPointMake(320, 0)];
     
     //Load current view
-    if(currentView){
+    if(!currentView)/*{
         [currentView.view removeFromSuperview];
         
         [currentView release];
         currentView=nil;
-    }
-    currentView = [[mainImageView alloc] initWithNibName:@"mainImageView" bundle:nil];
+    }*/
+        currentView = [[mainImageView alloc] initWithNibName:@"mainImageView" bundle:nil];
     [self loadImageView:currentView withGirl:todaysgirl withFrame:CGRectMake(320, 0, 320, 480)];
     
     //Load previous girl
@@ -173,13 +191,13 @@
         prevgirlindex = [[delegate.ds girls] count]-1;
     }
     NSMutableDictionary *yestgirl = [self getGirl:prevgirlindex ];
-    if(prevView){
+    if(!prevView)/*{
         [prevView.view removeFromSuperview];
         
         [prevView release];
         prevView=nil;
-    }
-    prevView = [[mainImageView alloc] initWithNibName:@"mainImageView" bundle:nil];
+    }*/
+        prevView = [[mainImageView alloc] initWithNibName:@"mainImageView" bundle:nil];
     [self loadImageView:prevView withGirl:yestgirl withFrame:CGRectMake(0, 0, 320, 480)];
 
     //load next girl
@@ -188,18 +206,21 @@
         nextgirlindex =0;
     }
     NSMutableDictionary *nextgirl = [self getGirl:nextgirlindex ];
-    if(nextView){
+    if(!nextView)/*{
         [nextView.view removeFromSuperview];
         
         [nextView release];
         nextView=nil;
-    }
-    nextView = [[mainImageView alloc] initWithNibName:@"mainImageView" bundle:nil];
+    }*/
+        nextView = [[mainImageView alloc] initWithNibName:@"mainImageView" bundle:nil];
     [self loadImageView:nextView withGirl:nextgirl withFrame:CGRectMake(640, 0, 320, 480)];
     //Make sure control view is always int he front
     [self.view bringSubviewToFront:controlView];
 }
+-(void)imagesLoadedMoveTheScroller{
+    [bgScrollView setContentOffset:CGPointMake(320, 0)];
 
+}
 #pragma mark -
 #pragma mark inital load methods
 -(void)finishedloading{
@@ -227,6 +248,9 @@
 
 #pragma mark -
 #pragma mark control screen handling
+-(NSInteger)heightForMorPics{
+    return ([[[delegate.ds.girls objectAtIndex:currentGirlIndex] objectForKey:@"girlpics"] count] -1)* 90;
+}
 -(void)bringThisViewToFront:(NSNotification*)note{
     UIView *viewer = (UIView*)[note object];
     if ([viewer class] == [UIView class])
@@ -240,7 +264,7 @@
     
     nameView.hidden=NO;
     moreShown=FALSE;
-    int height = ([[[delegate.ds.girls objectAtIndex:currentGirlIndex] objectForKey:@"girlpics"] count] -1)* 75;
+    int height = [self heightForMorPics];
     nameView.alpha=1.0f;
     CGRect frame = morePicsBg.frame;
     frame.size.height= frame.size.height-height;
@@ -263,13 +287,13 @@
     
     if (controlView.hidden){
         controlView.hidden=FALSE;
-        [UIView animateWithDuration:0.6f animations:^{
+        [UIView animateWithDuration:0.2f animations:^{
             controlView.alpha=1.0f;
         }completion:^(BOOL finished){}];
     }
     else{
         
-        [UIView animateWithDuration:0.6f animations:^{
+        [UIView animateWithDuration:0.2f animations:^{
             controlView.alpha=0.0f;
         }completion:^(BOOL finished){
             controlView.hidden=TRUE;
@@ -280,20 +304,25 @@
 }
 //Just scorll over to the next or previous girl. The scroll view delegate handles updating it so it recenters and you can keep scrolling infinitely
 -(void)showNextGirl{
+    if(moreShown)
+        [self showMorePics];
+
     [bgScrollView setContentOffset:CGPointMake(640, 0) animated:YES];
 
 }
 -(void)showPreviousGirl{
+    if(moreShown)
+        [self showMorePics];
+
     [bgScrollView setContentOffset:CGPointMake(0, 0) animated:YES];
 
 }
-
 -(void)showMorePics{
     if(moreShown){
         nameView.hidden=NO;
         //name view is the view with all the extra info in it. we hide it when showing the girl pics
-        [UIView animateWithDuration:0.8f animations:^{
-            int height = ([[[delegate.ds.girls objectAtIndex:currentGirlIndex] objectForKey:@"girlpics"] count] -1)* 75;
+        [UIView animateWithDuration:0.3f animations:^{
+            int height = [self heightForMorPics];
 
             nameView.alpha=1.0f;
             CGRect frame = morePicsBg.frame;
@@ -325,18 +354,27 @@
         NSDictionary *todaysgirl = [delegate.ds.userSelections objectForKey:currentGirlKey];
         imagePreviews = [[NSMutableDictionary alloc] init];
         int count =0 ;
+        NSOperationQueue *queue = [NSOperationQueue new];
+
         for (NSString *pic in pics){
             if (![[todaysgirl objectForKey:@"mainimage"] isEqualToString:pic]){
                 mainImageView *previewView = [[[mainImageView alloc] initWithNibName:@"mainImageView" bundle:nil] autorelease];
                 
                 previewView.delegate=self;
-                UIImage *newImage = [delegate.ds loadImage:pic];
-                [previewView setImageForButton:newImage];
+
+                NSInvocationOperation *operation = [[NSInvocationOperation alloc]
+                                                    initWithTarget:delegate.ds
+                                                    selector:@selector(loadImageIntoMorePicImages:)
+                                                    object:[NSArray arrayWithObjects:pic,previewView, nil]];
+                [queue addOperation:operation];
+                [operation release];
+
+                //[self performSelectorInBackground:@selector(loadImageIntoMorePicImages:) withObject:];
                 CGRect frame = previewView.view.frame;
                 
                 //whoo magic math. this layout is still chanign so leaving in the magic for now
-                frame.origin.x = morePicsView.frame.origin.x+ morePicsBtn.frame.origin.x+15.0f +23.0f;
-                frame.origin.y = morePicsView.frame.origin.y+morePicsBtn.frame.origin.y+44*count+60.0f+count*20.0f;
+                frame.origin.x = morePicsView.frame.origin.x+ morePicsBtn.frame.origin.x+20.0f;
+                frame.origin.y = morePicsView.frame.origin.y+morePicsBtn.frame.origin.y+80*count+50.0f+count*10.0f;
                 previewView.view.alpha=0.0f;
                 previewView.view.frame=frame;
                 previewView.picKey=pic;
@@ -347,10 +385,10 @@
                 
             }
         }
-        [UIView animateWithDuration:0.8f animations:^{
+        [UIView animateWithDuration:0.3f animations:^{
             nameView.alpha=0;
             CGRect frame = morePicsBg.frame;
-            int height = ([[[delegate.ds.girls objectAtIndex:currentGirlIndex] objectForKey:@"girlpics"] count] -1)* 75;
+            int height = [self heightForMorPics];
             for (NSString *key in imagePreviews){
                 mainImageView *iView = [imagePreviews objectForKey:key];
                 iView.view.alpha=1.0f;
@@ -383,7 +421,40 @@
     }
     return YES; // handle the touch
 }
-
+-(void) addToFavorites{
+    NSMutableDictionary *thegirl = [delegate.ds.userSelections objectForKey:currentGirlKey];
+    NSMutableArray *favs = [delegate.ds favorites];
+    if ([favs containsObject:thegirl]){
+        [favs removeObject:thegirl];
+        [addToFavs setImage:[UIImage imageNamed:@"heart.png"] forState:UIControlStateNormal];
+    }
+    else{
+        [favs addObject:thegirl];
+        [addToFavs setImage:[UIImage imageNamed:@"heartred.png"] forState:UIControlStateNormal];
+    }
+}
+-(void)showFavorites{
+    if(!favViews){
+    favViews = [[favViewController alloc] initWithNibName:@"favViewController" bundle:nil];
+    favViews.view.frame = CGRectMake(0, -430, favViews.view.frame.size.width, 430);
+    [self.view addSubview:favViews.view];
+    [UIView animateWithDuration:0.6f animations:^{
+        CGRect frame = favViews.view.frame;
+        frame.origin = CGPointZero;
+        favViews.view.frame=frame;
+    }];
+    }
+    else{
+        [UIView animateWithDuration:0.6f animations:^{
+            favViews.view.frame = CGRectMake(0, -430, favViews.view.frame.size.width, 430);
+ 
+        }completion:^(BOOL finished){
+            [favViews.view removeFromSuperview];
+            [favViews release];
+            favViews=nil;
+        }];
+    }
+}
 - (void)viewDidLoad
 {
     [super viewDidLoad];
@@ -401,6 +472,8 @@
     [alerter show];
     [prevGirl addTarget:self action:@selector(showPreviousGirl) forControlEvents:UIControlEventTouchUpInside];
     [nextGirl addTarget:self action:@selector(showNextGirl) forControlEvents:UIControlEventTouchUpInside];
+    [addToFavs addTarget:self action:@selector(addToFavorites) forControlEvents:UIControlEventTouchUpInside];
+    [showFavs addTarget:self action:@selector(showFavorites) forControlEvents:UIControlEventTouchUpInside];
  //   [shareGirl addTarget:self action:@selector(shareKitHndle) forControlEvents:UIControlEventTouchUpInside];
     [morePicsBtn addTarget:self action:@selector(showMorePics) forControlEvents:UIControlEventTouchUpInside];
     UITapGestureRecognizer *tapGesture = [[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(displayControls:)] autorelease];
@@ -409,6 +482,9 @@
     [self.view addGestureRecognizer:tapGesture];
     [self performSelectorInBackground:@selector(loadStuff) withObject:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(bringThisViewToFront:) name:@"BringToFront" object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(imagesLoadedMoveTheScroller) name:@"ImageLoadedIntoView" object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(loadGirlFromKey:) name:@"loadFavGirlIntoPage" object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(showFavorites) name:@"favoritesScreenTapped" object:nil];
 	// Do any additional setup after loading the view, typically from a nib.
 }
 #pragma mark Scroll View Delegate
@@ -430,6 +506,7 @@
             break;
     }
     if(page !=0){
+
         currentGirlIndex = currentGirlIndex+page;
         //wrap around
         if (currentGirlIndex < 0)
@@ -438,6 +515,28 @@
             currentGirlIndex=0;
         [self loadCurrentIndex];
     }
+}
+-(void)loadGirlFromKey:(NSNotification*)thenote{
+    [UIView animateWithDuration:0.6f animations:^{
+        favViews.view.frame = CGRectMake(0, -430, favViews.view.frame.size.width, 430);
+        
+    }completion:^(BOOL finished){
+        [favViews.view removeFromSuperview];
+        [favViews release];
+        favViews=nil;
+    }];
+
+    NSString *newGirlKey = [thenote object];
+   // NSMutableDictionary *todaysgirl = [delegate.ds.userSelections objectForKey:newGirlKey];
+    int newindex= 0;
+
+    for (newindex =0; newindex < [delegate.ds.girls count]; newindex++){
+        if ([newGirlKey intValue] == [[[delegate.ds.girls objectAtIndex:newindex] objectForKey:@"id"] intValue])
+            break;
+    }
+    currentGirlIndex = newindex;
+    [self loadCurrentIndex];
+
 }
 #pragma mark memory disposition stuff
 
@@ -465,6 +564,8 @@
     [nameView release];
     [morePicsView release];
     [bgScrollView release];
+    [showFavs release];
+    [noBtnCityName release];
     [super dealloc];
 }
 - (void)viewDidUnload {
@@ -480,6 +581,10 @@
     morePicsView = nil;
     [bgScrollView release];
     bgScrollView = nil;
+    [showFavs release];
+    showFavs = nil;
+    [noBtnCityName release];
+    noBtnCityName = nil;
     [super viewDidUnload];
 }
 @end

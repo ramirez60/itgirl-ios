@@ -11,6 +11,7 @@
 #define kDatabaseFileName @"itgirl.sqlite"
 #define kServerURL @"http://www.naxainc.com/"
 #define kPlistFileName @"itgirl.settings.plist"
+#define kPlistFavFileName @"itgirl.favorites.plist"
 #define kImagesOffset 9929
 #define kControlViewBtn 9927
 #endif

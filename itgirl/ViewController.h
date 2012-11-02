@@ -11,6 +11,8 @@
 #import "SHK.h"
 #import "bonvenoLabel.h"
 #import "mainImageView.h"
+#import "favViewController.h"
+
 @interface ViewController : UIViewController<UIGestureRecognizerDelegate, imageDelegate, UIScrollViewDelegate>
 {
     IBOutlet UIView *nameView;
@@ -38,8 +40,10 @@
     mainImageView *currentView;
     mainImageView *prevView;
     mainImageView *nextView;
-
+    favViewController *favViews;
     IBOutlet UIScrollView *bgScrollView;
+    IBOutlet UIButton *showFavs;
+    IBOutlet bonvenoLabel *noBtnCityName;
 }
 - (IBAction)displayControls:(id)sender;
 

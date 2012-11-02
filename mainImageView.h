@@ -21,8 +21,11 @@
 {
     UIImage *bgImage;
     NSString *picKey;
+    BOOL favView;
 }
+
 @property(nonatomic, retain)NSString *picKey;
+@property (nonatomic, assign)BOOL favView;
 @property (assign) id <imageDelegate> delegate;
 - (IBAction)tappedImage:(id)sender;
 @property (retain, nonatomic)    IBOutlet UIImageView *mainImageViewer;

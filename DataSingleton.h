@@ -14,7 +14,9 @@
     FMDatabase *db;
     NSMutableArray *girls;
     NSMutableDictionary *userSelections;
+    NSMutableArray *favorites;
 }
+@property (nonatomic, retain) NSMutableArray *favorites;
 @property (nonatomic, retain) NSMutableArray *girls;
 @property (nonatomic, retain) NSMutableDictionary *userSelections;
 -(void)storeSettings;
